@@ -1,0 +1,31 @@
+{
+    "name": "nick/secure-spreadsheet",
+    "description": "Encrypt and password protect sensitive XLSX files",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^7.4 || ^8.0 || ^8.1",
+        "ext-openssl": "*",
+        "ext-hash": "*",
+        "mnapoli/silly": "^1.8"
+    },
+    "require-dev": {
+        "php": "^7.4 || ^8.0 || ^8.1",
+        "ext-openssl": "*",
+        "ext-hash": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Nick\\SecureSpreadsheet\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Nick Huang",
+            "email": "nick80322@gmail.com"
+        }
+    ],
+    "bin": [
+        "secure-spreadsheet"
+    ]
+}
