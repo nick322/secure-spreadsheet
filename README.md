@@ -23,7 +23,7 @@ This will automatically install the package to your vendor folder.
 In cli
 
 ```bash
-$./secure-spreadsheet run --password=1 --input=/Users/nick/Encryptor/Book1.xlsx --output=/Users/nick/Encryptor/bb.xlsx
+secure-spreadsheet run --password=1 --input=/Users/nick/Encryptor/Book1.xlsx --output=/Users/nick/Encryptor/bb.xlsx
 
 ```
 
