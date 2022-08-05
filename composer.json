@@ -1,5 +1,5 @@
 {
-    "name": "nick/secure-spreadsheet",
+    "name": "nick322/secure-spreadsheet",
     "description": "Encrypt and password protect sensitive XLSX files",
     "type": "library",
     "license": "MIT",
