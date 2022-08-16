@@ -6,7 +6,7 @@ The [Office Open XML format](https://en.wikipedia.org/wiki/Office_Open_XML) prov
 
 Works with Excel, Numbers, and LibreOffice Calc
 
-[![Build Status](https://github.com/nick322/secure-spreadsheet/workflows/test/badge.svg?branch=master)](https://github.com/nick322/secure-spreadsheet/actions)
+[![Build Status](https://github.com/nick322/secure-spreadsheet/workflows/tests/badge.svg?branch=master)](https://github.com/nick322/secure-spreadsheet/actions)
 
 ## Installation
 
