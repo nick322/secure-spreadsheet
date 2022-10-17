@@ -17,4 +17,14 @@ class EncryptorTest extends TestCase
         (new Encrypt())->input('Book1.xlsx')->password('111')->output('bb.xlsx');
         $this->assertFileExists('bb.xlsx');
     }
+
+    public function testEncryptorWithBinaryData()
+    {
+        $data = 'Book1.xlsx';
+        $fp = fopen($data, 'rb');
+        $binaryData = fread($fp, filesize($data));
+        fclose($fp);
+        $str = (new Encrypt($nofile = true))->input($binaryData)->password('111')->output();
+        $this->assertEquals(12288, strlen($str));
+    }
 }

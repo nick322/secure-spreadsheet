@@ -30,8 +30,7 @@ class Encrypt
 
     public function input(string $data)
     {
-        if($this->NOFILE)
-        {
+        if ($this->NOFILE) {
             $this->data = unpack("C*", $data);
             return $this;
         }
@@ -51,8 +50,7 @@ class Encrypt
 
     public function output(string $filePath = null)
     {
-        if(!$this->NOFILE && is_null($filePath))
-        {
+        if (!$this->NOFILE && is_null($filePath)) {
             throw new Exception("Output Filepath cannot be NULL when NOFILE is False");
         }
         
@@ -224,10 +222,10 @@ class Encrypt
 
         $output = $CFB->write($output); // The cfb library writes to a Uint8array in the browser. Convert to a Buffer.
         $output = pack('C*', ...$output);
-        if($this->NOFILE)
-        {
+        if ($this->NOFILE) {
             return $output;
         }
+
         file_put_contents($filePath, $output);
     }
 
