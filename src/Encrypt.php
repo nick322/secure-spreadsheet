@@ -2,10 +2,13 @@
 
 namespace Nick\SecureSpreadsheet;
 
+use Exception;
+
 class Encrypt
 {
     public $data;
     public $password;
+    public $NOFILE = false;
     public $PACKAGE_OFFSET = 8;
     public $PACKAGE_ENCRYPTION_CHUNK_SIZE = 4096;
     public $BLOCK_KEYS = [
@@ -20,10 +23,21 @@ class Encrypt
         ]
     ];
 
-    public function input(string $filePath)
+    public function __construct(bool $nofile = false)
     {
-        $fp = fopen($filePath, 'rb');
-        $binary = fread($fp, filesize($filePath));
+        $this->NOFILE = $nofile;
+    }
+
+    public function input(string $data)
+    {
+        if($this->NOFILE)
+        {
+            $this->data = unpack("C*", $data);
+            return $this;
+        }
+
+        $fp = fopen($data, 'rb');
+        $binary = fread($fp, filesize($data));
         fclose($fp);
         $this->data = unpack("C*", $binary);
         return $this;
@@ -35,8 +49,13 @@ class Encrypt
         return $this;
     }
 
-    public function output(string $filePath)
+    public function output(string $filePath = null)
     {
+        if(!$this->NOFILE && is_null($filePath))
+        {
+            throw new Exception("Output Filepath cannot be NULL when NOFILE is False");
+        }
+        
         $packageKey = unpack('C*', random_bytes(32));
         $encryptionInfo = [
             'package' => [
@@ -204,8 +223,12 @@ class Encrypt
         $CFB->cfb_add($output, 'EncryptedPackage', $encryptedPackage); // Delete the SheetJS entry that is added at initialization
 
         $output = $CFB->write($output); // The cfb library writes to a Uint8array in the browser. Convert to a Buffer.
-
-        file_put_contents($filePath, pack('C*', ...$output));
+        $output = pack('C*', ...$output);
+        if($this->NOFILE)
+        {
+            return $output;
+        }
+        file_put_contents($filePath, $output);
     }
 
 

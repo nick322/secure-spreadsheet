@@ -40,6 +40,15 @@ $test->input('Book1.xlsx')
     ->output('bb.xlsx');
 ```
 
+
+If you want to only use memory/variable output and input, and no file interaction
+```php
+$test = new Encrypt($nofile = true);
+$output = $test->input($binaryData)
+    ->password('111')
+    ->output();
+```
+
 ## Credits
 
 Thanks to [xlsx-populate](https://github.com/dtjohnson/xlsx-populate) for providing the encryption and password protection.
