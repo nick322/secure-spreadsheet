@@ -4,6 +4,7 @@ namespace Nick\SecureSpreadsheet;
 
 class Buffer implements \ArrayAccess, \Countable, \Iterator
 {
+    public $l = 0;
     private $position = 0;
     private $container = [];
 
