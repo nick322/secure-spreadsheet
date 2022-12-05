@@ -9,3 +9,7 @@
 ## 1.0.3 (2022-10-20)
 
 * Update Buffer.php  https://github.com/nick322/secure-spreadsheet/pull/2
+
+## 1.0.4 (2022-12-5)
+
+* Using the SimpleXMLElement https://github.com/nick322/secure-spreadsheet/pull/3

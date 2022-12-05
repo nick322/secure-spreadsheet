@@ -3,6 +3,7 @@
 namespace Nick\SecureSpreadsheet;
 
 use Exception;
+use SimpleXMLElement;
 
 class Encrypt
 {
@@ -307,7 +308,8 @@ class Encrypt
     // Define a function that converts array to xml.
     private function arrayToXml($array)
     {
-        return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><encryption xmlns=\"http://schemas.microsoft.com/office/2006/encryption\" xmlns:p=\"http://schemas.microsoft.com/office/2006/keyEncryptor/password\" xmlns:c=\"http://schemas.microsoft.com/office/2006/keyEncryptor/certificate\"><keyData saltSize=\"{$array['children'][0]['attributes']['saltSize']}\" blockSize=\"{$array['children'][0]['attributes']['blockSize']}\" keyBits=\"{$array['children'][0]['attributes']['keyBits']}\" hashSize=\"{$array['children'][0]['attributes']['hashSize']}\" cipherAlgorithm=\"{$array['children'][0]['attributes']['cipherAlgorithm']}\" cipherChaining=\"{$array['children'][0]['attributes']['cipherChaining']}\" hashAlgorithm=\"{$array['children'][0]['attributes']['hashAlgorithm']}\" saltValue=\"{$array['children'][0]['attributes']['saltValue']}\"/><dataIntegrity encryptedHmacKey=\"{$array['children'][1]['attributes']['encryptedHmacKey']}\" encryptedHmacValue=\"{$array['children'][1]['attributes']['encryptedHmacValue']}\"/><keyEncryptors><keyEncryptor uri=\"http://schemas.microsoft.com/office/2006/keyEncryptor/password\"><p:encryptedKey spinCount=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['spinCount']}\" saltSize=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['saltSize']}\" blockSize=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['blockSize']}\" keyBits=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['keyBits']}\" hashSize=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['hashSize']}\" cipherAlgorithm=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['cipherAlgorithm']}\" cipherChaining=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['cipherChaining']}\" hashAlgorithm=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['hashAlgorithm']}\" saltValue=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['saltValue']}\" encryptedVerifierHashInput=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['encryptedVerifierHashInput']}\" encryptedVerifierHashValue=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['encryptedVerifierHashValue']}\" encryptedKeyValue=\"{$array['children'][2]['children'][0]['children'][0]['attributes']['encryptedKeyValue']}\"/></keyEncryptor></keyEncryptors></encryption>";
+        $this->build($array, $rootNode = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><encryption/>'));
+        return str_replace(['\r', '\n', '\r\n', '\n\r'], '', $rootNode->asXML());
     }
 
 
@@ -462,5 +464,33 @@ class Encrypt
         }
 
         return $output;
+    }
+
+    private function build($data, $rootNode)
+    {
+        // https://stackoverflow.com/questions/7717227/unable-to-add-attribute-with-namespace-prefix-using-php-simplexml
+        foreach ($data as $k => $v) {
+            if (is_countable($v)) {
+                foreach ($v as $kk => $vv) {
+                    if ($k === 'attributes') {
+                        $is_namespace = count(explode(':', $kk)) == 2;
+                        if ($is_namespace) {
+                            $rootNode->addAttribute('xmlns:xmlns:' . explode(':', $kk)[1], $vv);
+                        } else {
+                            $rootNode->addAttribute($kk, $vv);
+                        }
+                    }
+                    if ($k === 'children') {
+                        $is_namespace = count(explode(':', $vv['name'])) == 2;
+                        if ($is_namespace) {
+                            $r = $rootNode->addChild('xmlns:' . $vv['name'], '');
+                        } else {
+                            $r = $rootNode->addChild($vv['name'], '');
+                        }
+                        $this->build($vv, $r);
+                    }
+                }
+            }
+        }
     }
 }
