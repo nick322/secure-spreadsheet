@@ -4,7 +4,7 @@
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": "^7.4 || ^8.0 || ^8.1",
+        "php": "^7.3 || ^7.4 || ^8.0 || ^8.1",
         "ext-openssl": "*",
         "ext-hash": "*",
         "ext-simplexml": "*",
@@ -12,7 +12,7 @@
         "phpunit/phpunit": "^9.5"
     },
     "require-dev": {
-        "php": "^7.4 || ^8.0 || ^8.1",
+        "php": "^7.3 || ^7.4 || ^8.0 || ^8.1",
         "ext-openssl": "*",
         "ext-hash": "*"
     },
