@@ -4,15 +4,15 @@
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": "^7.4 || ^8.0 || ^8.1",
+        "php": "^7.3 || ^7.4 || ^8.0 || ^8.1",
         "ext-openssl": "*",
         "ext-hash": "*",
         "ext-simplexml": "*",
-        "mnapoli/silly": "^1.8",
+        "mnapoli/silly": "^1.0",
         "phpunit/phpunit": "^9.5"
     },
     "require-dev": {
-        "php": "^7.4 || ^8.0 || ^8.1",
+        "php": "^7.3 || ^7.4 || ^8.0 || ^8.1",
         "ext-openssl": "*",
         "ext-hash": "*"
     },
