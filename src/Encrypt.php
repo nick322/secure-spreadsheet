@@ -2,6 +2,9 @@
 
 namespace Nick\SecureSpreadsheet;
 
+use OLE;
+use OLE_PPS_File;
+use OLE_PPS_Root;
 use Exception;
 use SimpleXMLElement;
 
@@ -32,14 +35,24 @@ class Encrypt
     public function input(string $data)
     {
         if ($this->NOFILE) {
-            $this->data = unpack("C*", $data);
+            $this->data = (function () use ($data) {
+                for ($i = 0; $i < strlen($data) / 4096; $i++) {
+                    yield unpack("C*", substr($data, $i * 4096, 4096));
+                }
+            });
+
             return $this;
         }
 
-        $fp = fopen($data, 'rb');
-        $binary = fread($fp, filesize($data));
-        fclose($fp);
-        $this->data = unpack("C*", $binary);
+        $this->data = (function () use ($data) {
+            $fp = fopen($data, 'rb');
+            while (!feof($fp)) {
+                yield unpack("C*", fread($fp, 4096));
+            }
+            fclose($fp);
+            unset($fp);
+        });
+
         return $this;
     }
 
@@ -114,7 +127,7 @@ class Encrypt
 
 
         // Now create the HMAC
-        $hmacValue = $this->_hmac($encryptionInfo['package']['hashAlgorithm'], $hmacKey, $encryptedPackage);
+        $hmacValue = $this->_hmac($encryptionInfo['package']['hashAlgorithm'], $hmacKey);
 
         // Next generate an initialization vector for encrypting the resulting HMAC value.
         $hmacValueIV = $this->_createIV(
@@ -215,19 +228,27 @@ class Encrypt
         // Build the encryption info buffer
         $encryptionInfoBuffer = $this->_buildEncryptionInfo($encryptionInfo);
 
-        $CFB = new CFB();
-        $output = $CFB->cfb_new(); // Add the encryption info and encrypted package
+        $OLE = new OLE_PPS_File(OLE::Asc2Ucs('EncryptionInfo'));
+        $OLE->init();
+        $OLE->append(pack('C*',...$encryptionInfoBuffer));
 
-        $CFB->cfb_add($output, 'EncryptionInfo', $encryptionInfoBuffer);
-        $CFB->cfb_add($output, 'EncryptedPackage', $encryptedPackage); // Delete the SheetJS entry that is added at initialization
-
-        $output = $CFB->write($output); // The cfb library writes to a Uint8array in the browser. Convert to a Buffer.
-        $output = pack('C*', ...$output);
-        if ($this->NOFILE) {
-            return $output;
+        $OLE2 = new OLE_PPS_File(OLE::Asc2Ucs('EncryptedPackage'));
+        $OLE2->init();
+        $filesize = filesize('file');
+        for ($i = 0; $i < ($filesize / 4096); $i++) {
+            $encryptedPackage = unpack('C*', file_get_contents('file', false, null, $i * 4096, 4096));
+            $OLE2->append(pack('C*', ...$encryptedPackage));
         }
 
-        file_put_contents($filePath, $output);
+        $root = new OLE_PPS_Root(1000000000, 1000000000, array($OLE, $OLE2));
+         
+        if ($this->NOFILE) {
+            $filePath = 'NOFILE';
+        }
+
+        $root->save($filePath);
+
+        return file_get_contents($filePath);
     }
 
 
@@ -347,7 +368,7 @@ class Encrypt
         return unpack('C*', hash_final($ctx, true));
     }
 
-    private function _hmac($algorithm, $key, ...$buffers)
+    private function _hmac($algorithm, $key)
     {
         $algorithm = strtolower($algorithm);
         $key = pack('C*', ...$key);
@@ -356,8 +377,8 @@ class Encrypt
 
         $ctx = hash_init($algorithm, HASH_HMAC, $key);
 
-        $buffers = array_merge([], ...$buffers);
-        hash_update($ctx, pack('C*', ...$buffers));
+        hash_update_file($ctx, 'file');
+
         return unpack('C*', hash_final($ctx, true));
     }
 
@@ -427,43 +448,39 @@ class Encrypt
     ) {
 
         // The first 8 bytes is supposed to be the length, but it seems like it is really the length - 4..
-        $outputChunks = [];
+        $output = [];
 
-        // The package is encoded in chunks. Encrypt/decrypt each and concat.
-        $i = 0;
-        $start = 0;
-        $end = 0;
+        @unlink('outputChunk');
+        @unlink('fileHeaderLength');
+        @unlink('file');
+        
+        if (is_callable($input) && is_a($in = $input(), 'Generator')) {
+            $inputCount = 0;
 
-        while ($end < count($input)) {
-            $start = $end;
-            $end = $start + $this->PACKAGE_ENCRYPTION_CHUNK_SIZE;
-            if ($end > count($input)) $end = count($input);
+            foreach ($in as $i => $inputChunk) {
+                // Grab the next chunk
+                $inputCount += count($inputChunk);
+                $remainder = count($inputChunk) % $blockSize;
+                if ($remainder != 0) $inputChunk = array_pad($inputChunk, count($inputChunk) + (16 - $remainder), 0);
+                // Create the initialization vector
+                $iv = $this->_createIV($hashAlgorithm, $saltValue, $blockSize, $i);
 
-            // Grab the next chunk
-            $inputChunk = array_slice($input, $start, $this->PACKAGE_ENCRYPTION_CHUNK_SIZE);
+                // Encrypt/decrypt the chunk and add it to the array
+                $outputChunk = $this->_crypt($encrypt, $cipherAlgorithm, $cipherChaining, $key, $iv, $inputChunk);
 
-            // Pad the chunk if it is not an integer multiple of the block size
-            $remainder = count($inputChunk) % $blockSize;
-            if ($remainder != 0) $inputChunk = array_pad($inputChunk, count($inputChunk) + (16 - $remainder), 0);
-            // Create the initialization vector
-            $iv = $this->_createIV($hashAlgorithm, $saltValue, $blockSize, $i);
+                file_put_contents('outputChunk', pack('C*', ...$outputChunk), FILE_APPEND);
 
-            // Encrypt/decrypt the chunk and add it to the array
-            $outputChunk = $this->_crypt($encrypt, $cipherAlgorithm, $cipherChaining, $key, $iv, $inputChunk);
-            $outputChunks[] = $outputChunk;
+                unset($inputChunk, $outputChunk, $iv);
+            }
 
-            $i++;
+            unset($this->data);
+
+            file_put_contents('fileHeaderLength', pack('C*', ...$this->_createUInt32LEBuffer($inputCount, $this->PACKAGE_OFFSET)));
+           
+            file_put_contents('file', file_get_contents('fileHeaderLength') . file_get_contents('outputChunk') );
+
+            return $output;
         }
-
-        // Concat all of the output chunks.
-        $output = array_merge([], ...$outputChunks);
-
-        if ($encrypt) {
-            // Put the length of the package in the first 8 bytes
-            $output = array_merge($this->_createUInt32LEBuffer(count($input), $this->PACKAGE_OFFSET), $output);
-        }
-
-        return $output;
     }
 
     private function build($data, $rootNode)
