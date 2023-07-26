@@ -127,7 +127,7 @@ class Encrypt
 
 
         // Now create the HMAC
-        $hmacValue = $this->_hmac($encryptionInfo['package']['hashAlgorithm'], $hmacKey);
+        $hmacValue = $this->_hmac($encryptionInfo['package']['hashAlgorithm'], $hmacKey, $encryptedPackage['tmpFile']);
 
         // Next generate an initialization vector for encrypting the resulting HMAC value.
         $hmacValueIV = $this->_createIV(
@@ -234,16 +234,18 @@ class Encrypt
 
         $OLE2 = new OLE_PPS_File(OLE::Asc2Ucs('EncryptedPackage'));
         $OLE2->init();
-        $filesize = filesize('file');
+        $filesize = filesize($encryptedPackage['tmpFile']);
         for ($i = 0; $i < ($filesize / 4096); $i++) {
-            $encryptedPackage = unpack('C*', file_get_contents('file', false, null, $i * 4096, 4096));
-            $OLE2->append(pack('C*', ...$encryptedPackage));
+            $unpackEncryptedPackage = unpack('C*', file_get_contents($encryptedPackage['tmpFile'], false, null, $i * 4096, 4096));
+            $OLE2->append(pack('C*', ...$unpackEncryptedPackage));
         }
 
+        unlink($encryptedPackage['tmpFile']);
+        
         $root = new OLE_PPS_Root(1000000000, 1000000000, array($OLE, $OLE2));
          
         if ($this->NOFILE) {
-            $filePath = 'NOFILE';
+            $filePath = tempnam(sys_get_temp_dir(), 'NOFILE');
         }
 
         $root->save($filePath);
@@ -368,7 +370,7 @@ class Encrypt
         return unpack('C*', hash_final($ctx, true));
     }
 
-    private function _hmac($algorithm, $key)
+    private function _hmac($algorithm, $key, $fileName)
     {
         $algorithm = strtolower($algorithm);
         $key = pack('C*', ...$key);
@@ -377,7 +379,7 @@ class Encrypt
 
         $ctx = hash_init($algorithm, HASH_HMAC, $key);
 
-        hash_update_file($ctx, 'file');
+        hash_update_file($ctx, $fileName);
 
         return unpack('C*', hash_final($ctx, true));
     }
@@ -447,12 +449,9 @@ class Encrypt
         $input
     ) {
 
-        // The first 8 bytes is supposed to be the length, but it seems like it is really the length - 4..
-        $output = [];
-
-        @unlink('outputChunk');
-        @unlink('fileHeaderLength');
-        @unlink('file');
+        $tmpOutputChunk = tempnam(sys_get_temp_dir(), 'outputChunk');
+        $tmpFileHeaderLength = tempnam(sys_get_temp_dir(), 'fileHeaderLength');
+        $tmpFile = tempnam(sys_get_temp_dir(), 'file');
         
         if (is_callable($input) && is_a($in = $input(), 'Generator')) {
             $inputCount = 0;
@@ -468,18 +467,23 @@ class Encrypt
                 // Encrypt/decrypt the chunk and add it to the array
                 $outputChunk = $this->_crypt($encrypt, $cipherAlgorithm, $cipherChaining, $key, $iv, $inputChunk);
 
-                file_put_contents('outputChunk', pack('C*', ...$outputChunk), FILE_APPEND);
+                file_put_contents($tmpOutputChunk, pack('C*', ...$outputChunk), FILE_APPEND);
 
                 unset($inputChunk, $outputChunk, $iv);
             }
 
             unset($this->data);
 
-            file_put_contents('fileHeaderLength', pack('C*', ...$this->_createUInt32LEBuffer($inputCount, $this->PACKAGE_OFFSET)));
+            file_put_contents($tmpFileHeaderLength, pack('C*', ...$this->_createUInt32LEBuffer($inputCount, $this->PACKAGE_OFFSET)));
            
-            file_put_contents('file', file_get_contents('fileHeaderLength') . file_get_contents('outputChunk') );
+            file_put_contents($tmpFile, file_get_contents($tmpFileHeaderLength) . file_get_contents($tmpOutputChunk) );
 
-            return $output;
+            unlink($tmpOutputChunk);
+            unlink($tmpFileHeaderLength);
+
+            return [
+                'tmpFile' => $tmpFile,
+            ];
         }
     }
 

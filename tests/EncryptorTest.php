@@ -9,7 +9,7 @@ class EncryptorTest extends TestCase
 {
     protected function setUp(): void
     {
-        if(file_exists('bb.xlsx')) unlink('bb.xlsx');
+        if (file_exists('bb.xlsx')) unlink('bb.xlsx');
     }
 
     public function testEncryptor()
