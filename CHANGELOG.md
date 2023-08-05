@@ -21,3 +21,13 @@
 ## 1.0.6 (2023-06-08)
 
 * Performance Tuning
+
+## 1.0.7 (2023-06-11)
+
+* Upgrade package and change php error_reporting
+
+## 1.0.8 (2023-08-05)
+
+* Fix for very slow encryption [#10](https://github.com/nick322/secure-spreadsheet/issues/10)
+    . 
+    Thanks for @jonathanbromley contribution.
