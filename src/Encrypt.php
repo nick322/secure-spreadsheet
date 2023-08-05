@@ -402,10 +402,20 @@ class Encrypt
         $key = $this->_hash($hashAlgorithm, $saltValue, $passwordBuffer);
 
         // Now regenerate until spin count
+        // Prepare for hash(). Algo is known to be OK. Previous call to _hash()
+        // would have thrown an exception if not.
+        $algo = strtolower($hashAlgorithm);
+
+        // Get back to a binary string
+        $bKey = pack('C*', ...$key);
+
+        // Now regenerate until spin count
         for ($i = 0; $i < $spinCount; $i++) {
-            $iterator = $this->_createUInt32LEBuffer($i);
-            $key = $this->_hash($hashAlgorithm, $iterator, $key);
+            $bKey = hash($algo, pack('V', $i) . $bKey, true);
         }
+
+        // Convert binary string back to unpacked C* form
+        $key = unpack('C*', $bKey);
 
         // Now generate the final hash
         $key = $this->_hash($hashAlgorithm, $key, $blockKey);
