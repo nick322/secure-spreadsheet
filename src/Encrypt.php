@@ -37,7 +37,7 @@ class Encrypt
         if ($this->NOFILE) {
             $this->data = (function () use ($data) {
                 for ($i = 0; $i < strlen($data) / 4096; $i++) {
-                    yield unpack("C*", substr($data, $i * 4096, 4096));
+                    yield unpack('C*', substr($data, $i * 4096, 4096));
                 }
             });
 
@@ -47,7 +47,7 @@ class Encrypt
         $this->data = (function () use ($data) {
             $fp = fopen($data, 'rb');
             while (!feof($fp)) {
-                yield unpack("C*", fread($fp, 4096));
+                yield unpack('C*', fread($fp, 4096));
             }
             fclose($fp);
             unset($fp);
@@ -65,7 +65,7 @@ class Encrypt
     public function output(string $filePath = null)
     {
         if (!$this->NOFILE && is_null($filePath)) {
-            throw new Exception("Output Filepath cannot be NULL when NOFILE is False");
+            throw new Exception('Output Filepath cannot be NULL when NOFILE is False');
         }
         
         $packageKey = unpack('C*', random_bytes(32));
@@ -261,15 +261,15 @@ class Encrypt
         // Map the object into the appropriate XML structure. Buffers are encoded in base 64.
 
         $encryptionInfoNode = [
-            'name' => "encryption",
+            'name' => 'encryption',
             'attributes' => [
-                'xmlns' => "http://schemas.microsoft.com/office/2006/encryption",
-                'xmlns:p' => "http://schemas.microsoft.com/office/2006/keyEncryptor/password",
-                'xmlns:c' => "http://schemas.microsoft.com/office/2006/keyEncryptor/certificate"
+                'xmlns' => 'http://schemas.microsoft.com/office/2006/encryption',
+                'xmlns:p' => 'http://schemas.microsoft.com/office/2006/keyEncryptor/password',
+                'xmlns:c' => 'http://schemas.microsoft.com/office/2006/keyEncryptor/certificate'
             ],
             'children' => [
                 [
-                    'name' => "keyData",
+                    'name' => 'keyData',
                     'attributes' => [
                         'saltSize' => count($encryptionInfo['package']['saltValue']),
                         'blockSize' => $encryptionInfo['package']['blockSize'],
@@ -282,23 +282,23 @@ class Encrypt
                     ]
                 ],
                 [
-                    'name' => "dataIntegrity",
+                    'name' => 'dataIntegrity',
                     'attributes' => [
                         'encryptedHmacKey' => base64_encode(pack('C*', ...$encryptionInfo['dataIntegrity']['encryptedHmacKey'])),
                         'encryptedHmacValue' => base64_encode(pack('C*', ...$encryptionInfo['dataIntegrity']['encryptedHmacValue']))
                     ]
                 ],
                 [
-                    'name' => "keyEncryptors",
+                    'name' => 'keyEncryptors',
                     'children' => [
                         [
-                            'name' => "keyEncryptor",
+                            'name' => 'keyEncryptor',
                             'attributes' => [
-                                'uri' => "http://schemas.microsoft.com/office/2006/keyEncryptor/password"
+                                'uri' => 'http://schemas.microsoft.com/office/2006/keyEncryptor/password'
                             ],
                             'children' => [
                                 [
-                                    'name' => "p:encryptedKey",
+                                    'name' => 'p:encryptedKey',
                                     'attributes' => [
                                         'spinCount' => $encryptionInfo['key']['spinCount'],
                                         'saltSize' => count($encryptionInfo['key']['saltValue']),
@@ -358,46 +358,28 @@ class Encrypt
 
     private function _hash($algorithm, ...$buffers)
     {
-        $algorithm = strtolower($algorithm);
-
-        $buffers = array_merge([], ...$buffers);
-
-        if (!in_array($algorithm, hash_algos())) throw new \Exception("Hash algorithm '$algorithm' not supported!");
-
-        $ctx = hash_init($algorithm);
-
-        hash_update($ctx, pack('C*', ...$buffers));
-        return unpack('C*', hash_final($ctx, true));
+        return unpack('C*', hash(strtolower($algorithm), pack('C*', ...$buffers), true));
     }
 
     private function _hmac($algorithm, $key, $fileName)
     {
-        $algorithm = strtolower($algorithm);
-        $key = pack('C*', ...$key);
-
-        if (!in_array($algorithm, hash_hmac_algos())) throw new \Exception("HMAC algorithm '$algorithm' not supported!");
-
-        $ctx = hash_init($algorithm, HASH_HMAC, $key);
-
-        hash_update_file($ctx, $fileName);
-
-        return unpack('C*', hash_final($ctx, true));
+        return unpack('C*', hash_hmac_file(
+            strtolower($algorithm),
+            $fileName,
+            pack('C*', ...$key),
+            true
+        ));
     }
 
     private function _createUInt32LEBuffer($value, $bufferSize = 4)
     {
-        if ((strlen($a = dechex($value))) % 2 != 0) {
-            $a = '0' . $a;
-        }
-        $buffer = array_map('hexdec', array_reverse(str_split($a, 2)));
-        $buffer = array_pad($buffer, $bufferSize, (int) 0);
-        return $buffer;
+        return array_pad(array_values(unpack('C*', pack('V', $value))), $bufferSize, (int) 0);
     }
 
     private function _convertPasswordToKey($password, $hashAlgorithm, $saltValue, $spinCount, $keyBits, $blockKey)
     {
         // Password must be in unicode buffer
-        $passwordBuffer = array_map('hexdec', str_split(bin2hex(mb_convert_encoding($password,  "UTF-16LE", "utf-8")), 2));
+        $passwordBuffer = array_map('hexdec', str_split(bin2hex(mb_convert_encoding($password,  'UTF-16LE', 'utf-8')), 2));
         // Generate the initial hash
         $key = $this->_hash($hashAlgorithm, $saltValue, $passwordBuffer);
 
