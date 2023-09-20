@@ -32,6 +32,6 @@
     . 
     Thanks for @jonathanbromley contribution.
 
-## 1.0.9 (2023-09-20)
+## 1.0.10 (2023-09-20)
 
 * Fix password is not accepted [#18](https://github.com/nick322/secure-spreadsheet/issues/18)
