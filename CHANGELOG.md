@@ -31,3 +31,7 @@
 * Fix for very slow encryption [#10](https://github.com/nick322/secure-spreadsheet/issues/10)
     . 
     Thanks for @jonathanbromley contribution.
+
+## 1.0.9 (2023-09-20)
+
+* Fix password is not accepted [#18](https://github.com/nick322/secure-spreadsheet/issues/18)

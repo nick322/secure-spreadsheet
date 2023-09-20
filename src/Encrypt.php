@@ -358,7 +358,16 @@ class Encrypt
 
     private function _hash($algorithm, ...$buffers)
     {
-        return unpack('C*', hash(strtolower($algorithm), pack('C*', ...$buffers), true));
+        $algorithm = strtolower($algorithm);
+
+        $buffers = array_merge([], ...$buffers);
+
+        if (!in_array($algorithm, hash_algos())) throw new \Exception("Hash algorithm '$algorithm' not supported!");
+
+        $ctx = hash_init($algorithm);
+
+        hash_update($ctx, pack('C*', ...$buffers));
+        return unpack('C*', hash_final($ctx, true));
     }
 
     private function _hmac($algorithm, $key, $fileName)
