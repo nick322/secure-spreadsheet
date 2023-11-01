@@ -9,7 +9,7 @@
         "ext-hash": "*",
         "ext-simplexml": "*",
         "mnapoli/silly": "^1.0",
-        "pear/ole": "^1.0.0RC9"
+        "pear/ole": "v1.0.0RC9@dev"
     },
     "require-dev": {
         "php": "^7.3 || ^7.4 || ^8.0 || ^8.1 || ^8.2",
