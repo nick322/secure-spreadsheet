@@ -40,9 +40,6 @@ jobs:
         - name: Install Composer dependencies
           run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
 
-        - name: Execute migrate phpunit.xml.dist
-          run: vendor/bin/phpunit --migrate-configuration
-
         - name: Execute tests
           run: vendor/bin/phpunit
 
