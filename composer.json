@@ -4,7 +4,7 @@
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": "^7.3 || ^7.4 || ^8.0 || ^8.1 || ^8.2 || ^8.3",
+        "php": "^7.3 || ^7.4 || ^8.0 || ^8.1 || ^8.2 || ^8.3 || ^8.4",
         "ext-openssl": "*",
         "ext-hash": "*",
         "ext-simplexml": "*",
@@ -12,10 +12,10 @@
         "pear/ole": "v1.0.0"
     },
     "require-dev": {
-        "php": "^7.3 || ^7.4 || ^8.0 || ^8.1 || ^8.2 || ^8.3",
+        "php": "^7.3 || ^7.4 || ^8.0 || ^8.1 || ^8.2 || ^8.3 || ^8.4",
         "ext-openssl": "*",
         "ext-hash": "*",
-        "phpunit/phpunit": "^9.5 || ^10.0"
+        "phpunit/phpunit": "^9.6 || ^10 || ^11"
     },
     "autoload": {
         "psr-4": {

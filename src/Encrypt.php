@@ -62,7 +62,7 @@ class Encrypt
         return $this;
     }
 
-    public function output(string $filePath = null)
+    public function output(?string $filePath = null)
     {
         if (!$this->NOFILE && is_null($filePath)) {
             throw new Exception('Output Filepath cannot be NULL when NOFILE is False');
