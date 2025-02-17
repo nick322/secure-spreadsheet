@@ -35,3 +35,15 @@
 ## 1.0.10 (2023-09-20)
 
 * Fix password is not accepted [#18](https://github.com/nick322/secure-spreadsheet/issues/18)
+
+## 1.0.13 (2024-11-12)
+
+* PHP 8.3 support [#27](https://github.com/nick322/secure-spreadsheet/issues/27)
+
+## 1.0.14 (2024-12-27)
+
+* PHP 8.4 support [#29](https://github.com/nick322/secure-spreadsheet/issues/29)
+
+## 1.0.15 (2025-02-17)
+
+* cleanup composer.json from redundant data; fix dependencies by @gggeek in [#30](https://github.com/nick322/secure-spreadsheet/pull/30)
