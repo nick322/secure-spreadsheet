@@ -39,7 +39,7 @@ jobs:
             path: ${{ steps.composer-cache.outputs.dir }}
             key: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.stability }}-composer
             restore-keys: |
-              ${{ runner.os }}-${{ matrix.php }}-${{ matrix.stability }}--composer
+              ${{ runner.os }}-${{ matrix.php }}-${{ matrix.stability }}-composer
 
         - name: Setup PHP
           uses: shivammathur/setup-php@v2
@@ -55,4 +55,3 @@ jobs:
 
         - name: Execute tests
           run: vendor/bin/phpunit
-
