@@ -2,29 +2,34 @@
 
 namespace Nick\SecureSpreadsheet;
 
+use Exception;
 use OLE;
 use OLE_PPS_File;
 use OLE_PPS_Root;
-use Exception;
 use SimpleXMLElement;
 
 class Encrypt
 {
     public $data;
+
     public $password;
+
     public $NOFILE = false;
+
     public $PACKAGE_OFFSET = 8;
+
     public $PACKAGE_ENCRYPTION_CHUNK_SIZE = 4096;
+
     public $BLOCK_KEYS = [
         'dataIntegrity' => [
-            'hmacKey' => [0x5f, 0xb2, 0xad, 0x01, 0x0c, 0xb9, 0xe1, 0xf6],
-            'hmacValue' => [0xa0, 0x67, 0x7f, 0x02, 0xb2, 0x2c, 0x84, 0x33],
+            'hmacKey' => [0x5F, 0xB2, 0xAD, 0x01, 0x0C, 0xB9, 0xE1, 0xF6],
+            'hmacValue' => [0xA0, 0x67, 0x7F, 0x02, 0xB2, 0x2C, 0x84, 0x33],
         ],
-        'key' => [0x14, 0x6e, 0x0b, 0xe7, 0xab, 0xac, 0xd0, 0xd6],
+        'key' => [0x14, 0x6E, 0x0B, 0xE7, 0xAB, 0xAC, 0xD0, 0xD6],
         'verifierHash' => [
-            'input' => [0xfe, 0xa7, 0xd2, 0x76, 0x3b, 0x4b, 0x9e, 0x79],
-            'value' => [0xd7, 0xaa, 0x0f, 0x6d, 0x30, 0x61, 0x34, 0x4e],
-        ]
+            'input' => [0xFE, 0xA7, 0xD2, 0x76, 0x3B, 0x4B, 0x9E, 0x79],
+            'value' => [0xD7, 0xAA, 0x0F, 0x6D, 0x30, 0x61, 0x34, 0x4E],
+        ],
     ];
 
     public function __construct(bool $nofile = false)
@@ -46,7 +51,10 @@ class Encrypt
 
         $this->data = (function () use ($data) {
             $fp = fopen($data, 'rb');
-            while (!feof($fp)) {
+            if (! $fp) {
+                throw new Exception('file not found');
+            }
+            while (! feof($fp)) {
                 yield unpack('C*', fread($fp, 4096));
             }
             fclose($fp);
@@ -59,15 +67,16 @@ class Encrypt
     public function password(string $password)
     {
         $this->password = $password;
+
         return $this;
     }
 
     public function output(?string $filePath = null)
     {
-        if (!$this->NOFILE && is_null($filePath)) {
+        if (! $this->NOFILE && is_null($filePath)) {
             throw new Exception('Output Filepath cannot be NULL when NOFILE is False');
         }
-        
+
         $packageKey = unpack('C*', random_bytes(32));
         $encryptionInfo = [
             'package' => [
@@ -77,7 +86,7 @@ class Encrypt
                 'hashAlgorithm' => 'SHA512', // Hash algorithm to use. Excel uses SHA512.
                 'hashSize' => 64, // The size of the hash in bytes. SHA512 results in 64-byte hashes
                 'blockSize' => 16, // The number of bytes used to encrypt one block of data. It MUST be at least 2, no greater than 4096, and a multiple of 2. Excel uses 16
-                'keyBits' => count($packageKey) * 8
+                'keyBits' => count($packageKey) * 8,
             ],
             'key' => [ // Info on the encryption of the package key.
                 'cipherAlgorithm' => 'AES', // Cipher algorithm to use. Excel uses AES.
@@ -87,8 +96,8 @@ class Encrypt
                 'hashSize' => 64, // The size of the hash in bytes. SHA512 results in 64-byte hashes
                 'blockSize' => 16, // The number of bytes used to encrypt one block of data. It MUST be at least 2, no greater than 4096, and a multiple of 2. Excel uses 16
                 'spinCount' => 100000, // The number of times to iterate on a hash of a password. It MUST NOT be greater than 10,000,000. Excel uses 100,000.
-                'keyBits' => 256 // The length of the key to generate from the password. Must be a multiple of 8. Excel uses 256.
-            ]
+                'keyBits' => 256, // The length of the key to generate from the password. Must be a multiple of 8. Excel uses 256.
+            ],
         ];
 
         /* Package Encryption */
@@ -125,7 +134,6 @@ class Encrypt
             $hmacKey
         );
 
-
         // Now create the HMAC
         $hmacValue = $this->_hmac($encryptionInfo['package']['hashAlgorithm'], $hmacKey, $encryptedPackage['tmpFile']);
 
@@ -150,7 +158,7 @@ class Encrypt
         // Put the encrypted key and value on the encryption info
         $encryptionInfo['dataIntegrity'] = [
             'encryptedHmacKey' => $encryptedHmacKey,
-            'encryptedHmacValue' => $encryptedHmacValue
+            'encryptedHmacValue' => $encryptedHmacValue,
         ];
 
         /* Key Encryption */
@@ -201,7 +209,6 @@ class Encrypt
             $verifierHashInput
         );
 
-
         // Create a hash of the input
         $verifierHashValue = $this->_hash($encryptionInfo['key']['hashAlgorithm'], $verifierHashInput);
 
@@ -230,7 +237,7 @@ class Encrypt
 
         $OLE = new OLE_PPS_File(OLE::Asc2Ucs('EncryptionInfo'));
         $OLE->init();
-        $OLE->append(pack('C*',...$encryptionInfoBuffer));
+        $OLE->append(pack('C*', ...$encryptionInfoBuffer));
 
         $OLE2 = new OLE_PPS_File(OLE::Asc2Ucs('EncryptedPackage'));
         $OLE2->init();
@@ -241,9 +248,9 @@ class Encrypt
         }
 
         unlink($encryptedPackage['tmpFile']);
-        
-        $root = new OLE_PPS_Root(1000000000, 1000000000, array($OLE, $OLE2));
-         
+
+        $root = new OLE_PPS_Root(1000000000, 1000000000, [$OLE, $OLE2]);
+
         if ($this->NOFILE) {
             $filePath = tempnam(sys_get_temp_dir(), 'NOFILE');
         }
@@ -252,7 +259,6 @@ class Encrypt
 
         return file_get_contents($filePath);
     }
-
 
     private function _buildEncryptionInfo($encryptionInfo)
     {
@@ -265,7 +271,7 @@ class Encrypt
             'attributes' => [
                 'xmlns' => 'http://schemas.microsoft.com/office/2006/encryption',
                 'xmlns:p' => 'http://schemas.microsoft.com/office/2006/keyEncryptor/password',
-                'xmlns:c' => 'http://schemas.microsoft.com/office/2006/keyEncryptor/certificate'
+                'xmlns:c' => 'http://schemas.microsoft.com/office/2006/keyEncryptor/certificate',
             ],
             'children' => [
                 [
@@ -279,14 +285,14 @@ class Encrypt
                         'cipherChaining' => $encryptionInfo['package']['cipherChaining'],
                         'hashAlgorithm' => $encryptionInfo['package']['hashAlgorithm'],
                         'saltValue' => base64_encode(pack('C*', ...$encryptionInfo['package']['saltValue'])),
-                    ]
+                    ],
                 ],
                 [
                     'name' => 'dataIntegrity',
                     'attributes' => [
                         'encryptedHmacKey' => base64_encode(pack('C*', ...$encryptionInfo['dataIntegrity']['encryptedHmacKey'])),
-                        'encryptedHmacValue' => base64_encode(pack('C*', ...$encryptionInfo['dataIntegrity']['encryptedHmacValue']))
-                    ]
+                        'encryptedHmacValue' => base64_encode(pack('C*', ...$encryptionInfo['dataIntegrity']['encryptedHmacValue'])),
+                    ],
                 ],
                 [
                     'name' => 'keyEncryptors',
@@ -294,7 +300,7 @@ class Encrypt
                         [
                             'name' => 'keyEncryptor',
                             'attributes' => [
-                                'uri' => 'http://schemas.microsoft.com/office/2006/keyEncryptor/password'
+                                'uri' => 'http://schemas.microsoft.com/office/2006/keyEncryptor/password',
                             ],
                             'children' => [
                                 [
@@ -311,14 +317,14 @@ class Encrypt
                                         'saltValue' => base64_encode(pack('C*', ...$encryptionInfo['key']['saltValue'])),
                                         'encryptedVerifierHashInput' => base64_encode(pack('C*', ...$encryptionInfo['key']['encryptedVerifierHashInput'])),
                                         'encryptedVerifierHashValue' => base64_encode(pack('C*', ...$encryptionInfo['key']['encryptedVerifierHashValue'])),
-                                        'encryptedKeyValue' => base64_encode(pack('C*', ...$encryptionInfo['key']['encryptedKeyValue']))
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+                                        'encryptedKeyValue' => base64_encode(pack('C*', ...$encryptionInfo['key']['encryptedKeyValue'])),
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ];
         $byte_array = unpack('C*', $this->arrayToXml($encryptionInfoNode));
 
@@ -327,21 +333,23 @@ class Encrypt
         return $byte_array;
     }
 
-
     // Define a function that converts array to xml.
     private function arrayToXml($array)
     {
         $this->build($array, $rootNode = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><encryption/>'));
+
         return str_replace(['\r', '\n', '\r\n', '\n\r'], '', $rootNode->asXML());
     }
 
-
     private function _crypt($encrypt, $cipherAlgorithm, $cipherChaining, $key, $iv, $input)
     {
-        $algorithm = strtolower($cipherAlgorithm) . '-' . (count($key) * 8);
+        $algorithm = strtolower($cipherAlgorithm).'-'.(count($key) * 8);
 
-        if ($cipherChaining === 'ChainingModeCBC') $algorithm .= '-cbc';
-        else throw new \Exception("Unknown cipher chaining: $cipherChaining");
+        if ($cipherChaining === 'ChainingModeCBC') {
+            $algorithm .= '-cbc';
+        } else {
+            throw new \Exception("Unknown cipher chaining: $cipherChaining");
+        }
 
         if ($encrypt) {
             $ciphertext = openssl_encrypt(
@@ -353,6 +361,7 @@ class Encrypt
             );
             $cipher = unpack('C*', $ciphertext);
         }
+
         return $cipher;
     }
 
@@ -362,11 +371,14 @@ class Encrypt
 
         $buffers = array_merge([], ...$buffers);
 
-        if (!in_array($algorithm, hash_algos())) throw new \Exception("Hash algorithm '$algorithm' not supported!");
+        if (! in_array($algorithm, hash_algos())) {
+            throw new \Exception("Hash algorithm '$algorithm' not supported!");
+        }
 
         $ctx = hash_init($algorithm);
 
         hash_update($ctx, pack('C*', ...$buffers));
+
         return unpack('C*', hash_final($ctx, true));
     }
 
@@ -388,7 +400,7 @@ class Encrypt
     private function _convertPasswordToKey($password, $hashAlgorithm, $saltValue, $spinCount, $keyBits, $blockKey)
     {
         // Password must be in unicode buffer
-        $passwordBuffer = array_map('hexdec', str_split(bin2hex(mb_convert_encoding($password,  'UTF-16LE', 'utf-8')), 2));
+        $passwordBuffer = array_map('hexdec', str_split(bin2hex(mb_convert_encoding($password, 'UTF-16LE', 'utf-8')), 2));
         // Generate the initial hash
         $key = $this->_hash($hashAlgorithm, $saltValue, $passwordBuffer);
 
@@ -402,7 +414,7 @@ class Encrypt
 
         // Now regenerate until spin count
         for ($i = 0; $i < $spinCount; $i++) {
-            $bKey = hash($algo, pack('V', $i) . $bKey, true);
+            $bKey = hash($algo, pack('V', $i).$bKey, true);
         }
 
         // Convert binary string back to unpacked C* form
@@ -415,7 +427,7 @@ class Encrypt
         $keyBytes = $keyBits / 8;
         if (count($key) < $keyBytes) {
             $key = array_pad($key, $keyBytes, 0x36);
-        } else if (count($key) > $keyBytes) {
+        } elseif (count($key) > $keyBytes) {
             $key = array_slice($key, 0, $keyBytes);
         }
 
@@ -425,14 +437,16 @@ class Encrypt
     private function _createIV($hashAlgorithm, $saltValue, $blockSize, $blockKey)
     {
         // Create the block key from the current index
-        if (is_int($blockKey)) $blockKey = $this->_createUInt32LEBuffer($blockKey);
+        if (is_int($blockKey)) {
+            $blockKey = $this->_createUInt32LEBuffer($blockKey);
+        }
 
         // Create the initialization vector by hashing the salt with the block key.
         // Truncate or pad as needed to meet the block size.
         $iv = $this->_hash($hashAlgorithm, $saltValue, $blockKey);
         if (count($iv) < $blockSize) {
             $iv = array_pad($iv, $blockSize, 0x36);
-        } else if (count($iv) > $blockSize) {
+        } elseif (count($iv) > $blockSize) {
             $iv = array_slice($iv, 0, $blockSize);
         }
 
@@ -453,7 +467,7 @@ class Encrypt
         $tmpOutputChunk = tempnam(sys_get_temp_dir(), 'outputChunk');
         $tmpFileHeaderLength = tempnam(sys_get_temp_dir(), 'fileHeaderLength');
         $tmpFile = tempnam(sys_get_temp_dir(), 'file');
-        
+
         if (is_callable($input) && is_a($in = $input(), 'Generator')) {
             $inputCount = 0;
 
@@ -461,7 +475,9 @@ class Encrypt
                 // Grab the next chunk
                 $inputCount += count($inputChunk);
                 $remainder = count($inputChunk) % $blockSize;
-                if ($remainder != 0) $inputChunk = array_pad($inputChunk, count($inputChunk) + (16 - $remainder), 0);
+                if ($remainder != 0) {
+                    $inputChunk = array_pad($inputChunk, count($inputChunk) + (16 - $remainder), 0);
+                }
                 // Create the initialization vector
                 $iv = $this->_createIV($hashAlgorithm, $saltValue, $blockSize, $i);
 
@@ -476,8 +492,8 @@ class Encrypt
             unset($this->data);
 
             file_put_contents($tmpFileHeaderLength, pack('C*', ...$this->_createUInt32LEBuffer($inputCount, $this->PACKAGE_OFFSET)));
-           
-            file_put_contents($tmpFile, file_get_contents($tmpFileHeaderLength) . file_get_contents($tmpOutputChunk) );
+
+            file_put_contents($tmpFile, file_get_contents($tmpFileHeaderLength).file_get_contents($tmpOutputChunk));
 
             unlink($tmpOutputChunk);
             unlink($tmpFileHeaderLength);
@@ -497,7 +513,7 @@ class Encrypt
                     if ($k === 'attributes') {
                         $is_namespace = count(explode(':', $kk)) == 2;
                         if ($is_namespace) {
-                            $rootNode->addAttribute('xmlns:xmlns:' . explode(':', $kk)[1], $vv);
+                            $rootNode->addAttribute('xmlns:xmlns:'.explode(':', $kk)[1], $vv);
                         } else {
                             $rootNode->addAttribute($kk, $vv);
                         }
@@ -505,7 +521,7 @@ class Encrypt
                     if ($k === 'children') {
                         $is_namespace = count(explode(':', $vv['name'])) == 2;
                         if ($is_namespace) {
-                            $r = $rootNode->addChild('xmlns:' . $vv['name'], '');
+                            $r = $rootNode->addChild('xmlns:'.$vv['name'], '');
                         } else {
                             $r = $rootNode->addChild($vv['name'], '');
                         }
