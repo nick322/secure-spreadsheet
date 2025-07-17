@@ -13,7 +13,7 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     require getenv('HOME') . '/.composer/vendor/autoload.php';
 }
 
-$app = new Application('Secure spreadsheet', $version = '1.0.0');
+$app = new Application('Secure spreadsheet', $version = '1.0.16');
 
 $app->command(
     'run [--password=] [--input=] [--output=] ',
