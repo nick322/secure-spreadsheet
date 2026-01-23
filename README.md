@@ -29,6 +29,8 @@ secure-spreadsheet run --password=1 --input=/Users/nick/Encryptor/Book1.xlsx --o
 
 In php
 
+Usage Examples
+
 ```php
 require "vendor/autoload.php";
 
@@ -40,13 +42,33 @@ $test->input('Book1.xlsx')
     ->output('bb.xlsx');
 ```
 
+Memory-only input and output (no file interaction)
 
-If you want to only use memory/variable output and input, and no file interaction
 ```php
 $test = new Encrypt($nofile = true);
 $output = $test->input($binaryData)
     ->password('111')
     ->output();
+```
+
+Memory output with a temporary folder
+
+```php
+$test = new Encrypt(true);
+$out = $test->input('Book1.xlsx')
+    ->setTempPathFolder(__DIR__ . DIRECTORY_SEPARATOR . 'tmp')
+    ->password('111')
+    ->output();
+```
+
+File input and file output with a temporary folder
+
+```php
+$test = new Encrypt;
+$test->input('Book1.xlsx')
+    ->setTempPathFolder(__DIR__ . DIRECTORY_SEPARATOR . 'tmp')
+    ->password('111')
+    ->output('bb4.xlsx');
 ```
 
 ## Credits
