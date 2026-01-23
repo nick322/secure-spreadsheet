@@ -6,12 +6,17 @@ use Exception;
 use OLE;
 use OLE_PPS_File;
 use OLE_PPS_Root;
+use RuntimeException;
 
 class Encrypt
 {
     private $data;
+
     private $password;
+
     private $noFile = false;
+
+    private $tmpPathFolder = null;
 
     public function __construct(bool $nofile = false)
     {
@@ -29,10 +34,10 @@ class Encrypt
         } else {
             $this->data = function () use ($data) {
                 $fp = fopen($data, 'rb');
-                if (!$fp) {
+                if (! $fp) {
                     throw new Exception('file not found');
                 }
-                while (!feof($fp)) {
+                while (! feof($fp)) {
                     yield unpack('C*', fread($fp, 4096));
                 }
                 fclose($fp);
@@ -45,12 +50,13 @@ class Encrypt
     public function password(string $password)
     {
         $this->password = $password;
+
         return $this;
     }
 
     public function output(?string $filePath = null)
     {
-        if (!$this->noFile && is_null($filePath)) {
+        if (! $this->noFile && is_null($filePath)) {
             throw new Exception('Output Filepath cannot be NULL when NOFILE is False');
         }
 
@@ -64,7 +70,8 @@ class Encrypt
             $encryptionInfo['package']['blockSize'],
             $encryptionInfo['package']['saltValue'],
             $packageKey,
-            $this->data
+            $this->data,
+            $this->tmpPathFolder
         );
 
         $encryptionInfo['dataIntegrity'] = $this->createDataIntegrity($encryptionInfo, $packageKey, $encryptedPackage['tmpFile']);
@@ -103,12 +110,11 @@ class Encrypt
             $OLE2->append(pack('C*', ...$unpackEncryptedPackage));
         }
 
-        unlink($encryptedPackage['tmpFile']);
-
         $root = new OLE_PPS_Root(1000000000, 1000000000, [$OLE, $OLE2]);
 
         if ($this->noFile) {
-            $filePath = tempnam(sys_get_temp_dir(), 'NOFILE');
+            $tmp = new TempFileManager($this->tmpPathFolder);
+            $filePath = $tmp->path('NOFILE');
         }
 
         $root->save($filePath);
@@ -200,5 +206,16 @@ class Encrypt
             $encryptionInfo['key']['saltValue'],
             $verifierHashValue
         );
+    }
+
+    public function setTempPathFolder(string $path)
+    {
+        if (! is_writable($path)) {
+            throw new RuntimeException('Temp dir not writable.');
+        }
+
+        $this->tmpPathFolder = $path;
+
+        return $this;
     }
 }

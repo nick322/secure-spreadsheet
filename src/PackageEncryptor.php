@@ -11,11 +11,15 @@ class PackageEncryptor
         int $blockSize,
         array $saltValue,
         array $key,
-        callable $input
+        callable $input,
+        ?string $tmpPathFolder = null
     ) {
-        $tmpOutputChunk = tempnam(sys_get_temp_dir(), 'outputChunk');
-        $tmpFileHeaderLength = tempnam(sys_get_temp_dir(), 'fileHeaderLength');
-        $tmpFile = tempnam(sys_get_temp_dir(), 'file');
+
+        $tmp = new TempFileManager($tmpPathFolder);
+
+        $tmpOutputChunk = $tmp->path('outputChunk');
+        $tmpFileHeaderLength = $tmp->path('fileHeaderLength');
+        $tmpFile = $tmp->path('file');
 
         if (is_callable($input) && is_a($in = $input(), 'Generator')) {
             $inputCount = 0;
@@ -35,10 +39,7 @@ class PackageEncryptor
             }
 
             file_put_contents($tmpFileHeaderLength, pack('C*', ...CryptoHelper::createUInt32LEBuffer($inputCount, EncryptionConfig::PACKAGE_OFFSET)));
-            file_put_contents($tmpFile, file_get_contents($tmpFileHeaderLength) . file_get_contents($tmpOutputChunk));
-
-            unlink($tmpOutputChunk);
-            unlink($tmpFileHeaderLength);
+            file_put_contents($tmpFile, file_get_contents($tmpFileHeaderLength).file_get_contents($tmpOutputChunk));
 
             return ['tmpFile' => $tmpFile];
         }
