@@ -32,7 +32,7 @@ class EncryptorTest extends TestCase
 
     public function test_encryptor_with_set_temp_path_folder()
     {
-        (new Encrypt)->input('Book1.xlsx')->setTempPathFolder('/tmp')->password('111')->output('bb.xlsx');
+        (new Encrypt)->input('Book1.xlsx')->setTempPathFolder(dirname(__DIR__).DIRECTORY_SEPARATOR.'tmp')->password('111')->output('bb.xlsx');
         $this->assertFileExists('bb.xlsx');
     }
 }
