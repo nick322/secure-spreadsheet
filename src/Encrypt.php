@@ -99,10 +99,16 @@ class Encrypt
         $encryptionInfoBuffer = EncryptionInfoBuilder::build($encryptionInfo);
 
         $OLE = new OLE_PPS_File(OLE::Asc2Ucs('EncryptionInfo'));
+        if ($this->tmpPathFolder) {
+            $OLE->setTempDir($this->tmpPathFolder);
+        }
         $OLE->init();
         $OLE->append(pack('C*', ...$encryptionInfoBuffer));
 
         $OLE2 = new OLE_PPS_File(OLE::Asc2Ucs('EncryptedPackage'));
+        if ($this->tmpPathFolder) {
+            $OLE2->setTempDir($this->tmpPathFolder);
+        }
         $OLE2->init();
         $filesize = filesize($encryptedPackage['tmpFile']);
         for ($i = 0; $i < ($filesize / 4096); $i++) {
